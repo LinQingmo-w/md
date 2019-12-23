@@ -117,3 +117,83 @@ SDImageCache
 
 #### Manage
 
+
+
+
+
+---
+
+## 视频讲解
+
+SDWebImage 5.0 后 面向协议编程 
+
+异步下载，图片解压缩
+
+
+
+
+
+ ![SDWebImageClassDiagram](https://tva1.sinaimg.cn/large/006tNbRwly1ga6pv71b19j30zo0u07eo.jpg)
+
+- 上层api：分类，扩展
+
+	分类：原理，区别，特性
+
+- 核心：SDWebImageManage  收集任务， 分发任务
+
+	
+
+	sdwebImage
+
+	获取manager ，使用它发起任务
+
+	添加复用标示（类名），判断控件上有且只有一个任务。--字典(NSMapTable)存取任务。NSMapTable:可设置存储规则，key值存储不用按规定copy，（dic用copy），付值两个会有两个健值对，因为copyWithZone。vaule用weak，就是一份值。对象实现了copy，则作为key会复制出来一个，hash值不同。实现了isEqual,hash，则能判断想相同--需要有内容。
+
+	
+
+	发起请求，由manage发起，根据url发起请求，或从缓存中取。添加缓存。
+
+	需要设置cancel。
+
+	用strong会调用objc_strong();
+
+	能从缓存取，就需要能取消
+
+	设计api要考虑调用需求。有单利有init方法，可以选择调用。
+
+	网络加载任务和缓存查询任务。
+
+	manage区分cacheOperation和loaderOperation,分别是查询缓存和网络请求。
+
+	-- 面向接口编程。通过协议进行相互间的注册调用。更易做拆分。
+
+	
+
+	- cache：优先内存缓存；没有了查找磁盘缓存，查到了把它加载到内存中提高下一次命中率。
+
+	NSCache: 线程安全，key强引用，自动进行缓存清理. 类似于字典。
+
+	cache缓存，用了一个子类：SDMemorryCache，继承NSCache，重写了setObject:forKey: 给了一个标示。 然后在进行存储。
+
+	![image-20191223185446572](https://tva1.sinaimg.cn/large/006tNbRwly1ga6usmxtxxj311i0emn7j.jpg)
+
+	假设：当前obj引用计数为1，强引用后引用计数为2.unlock后变为1，还在内存中。单unlock后认为不再缓存里面了。就要从磁盘在家再一次，所以不高效。
+
+	声明nsmapTable.使用weak，不影响当前对象的生命周期。对象就会存在弱引用表中。就可以查找。用空间换取时间，以提高命中率
+
+	
+
+	## 优化：
+
+	1. barItem
+
+	2. 同名url怎么更新
+
+	
+
+	
+
+
+
+
+
