@@ -90,6 +90,58 @@ UIKit：对应页面的显示
 
 
 
+## 3.0 2.0
+
+3.0基于NSURLSession。AFURLSessionManager为对NSURLSession的封装。
+
+
+
+区别：
+
+1. AFNetworking在3.0版本中删除了基于 NSURLConnection API的所有支持。如果你的项目以前使用过这些API，建议您立即升级到基于 NSURLSession 的API的AFNetworking的版本。
+
+2. AFNetworking 3.0现已完全基于NSURLSession的API，这降低了维护的负担，同时支持苹果增强关于NSURLSession提供的任何额外功能。
+
+3. 可以结合MBProgressHUD，网络请求时间短的话，就可以不要显示HUD，提高用户体验，另外HUD也可以懒加载，全程只需要一个HUD即可。HUD内部有创建HUD对象时涉及到请求时间的类方法，在这个方法中如果请求时间小于某个值，就返回nil，即不显示HUD。此外AFN还有联网检测功能，每次请求网络之前先检测有没有网络，没有网络则提示用户（涉及到AFN和HUD的组合封装）
+
+
+
+- 为什么af2.0有一个常驻现场，3.0没有，用什么实现了
+
+NSURLConnection的一大痛点就是：发起请求后，这条线程并不能随风而去，而需要一直处于等待回调的状态。
+
+功能不一样：AF3.0的operationQueue是用来接收NSURLSessionDelegate回调的，鉴于一些多线程数据访问的安全性考虑，设置了maxConcurrentOperationCount = 1来达到串行回调的效果。
+而AF2.0的operationQueue是用来添加operation并进行并发请求的，所以不要设置为1。
+
+
+
+
+
+
+
+
+最上层的是AFHTTPRequestOperationManager,我们调用它进行get、post等等各种类型的网络请求
+
+然后它去调用AFURLRequestSerialization【seralz深】做request参数拼装。然后生成了一个AFHTTPRequestOperation实例，并把request交给它。然后把AFHTTPRequestOperation添加到一个NSOperationQueue中。
+
+接着AFHTTPRequestOperation拿到request后，会去调用它的父类AFURLConnectionOperation的初始化方法，并且把相关参数交给它，除此之外，当父类完成数据请求后，它调用了AFURLResponseSerialization把数据解析成我们需要的格式（json、XML等等）。
+
+最后就是我们AF最底层的类AFURLConnectionOperation，它去数据请求，并且如果是https请求，会在请求的相关代理中，调用AFSecurityPolicy做https认证。最后请求到的数据返回。
+
+
+
+用NSURLConnection [kə'nekʃən]，我们为了获取请求结果有以下三种选择：
+
+1.在主线程调异步接口
+
+2.每一个请求用一个线程，对应一个runloop，然后等待结果回调。
+
+3.只用一条线程，一个runloop，所有结果回调在这个线程上。
+
+
+
+
+
 ## AFN根据调用页面取消操作
 
 ### [例子1](https://www.jianshu.com/p/faa1950814d0) : 网络请求添加监听对象监听释放。
@@ -619,8 +671,3 @@ MISDownloadManagerCompletion completeBlock =
 [iOS后台下载、断点下载](https://blog.csdn.net/ssyyjj88/article/details/72466155)：里面详细介绍了如何在app被kill掉了之后如何恢复下载
 
 
-
-作者：YaoYaoX
-链接：https://www.jianshu.com/p/616ef23511f7
-来源：简书
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。

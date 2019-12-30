@@ -12,7 +12,7 @@ block定义中调用了 `__main_block_impl_0`函数，并且将 `__main_block_im
 
 结构体内有一个同名构造函数`__main_block_imp_0`，构造函数中对一些变量进行了赋值最终会返回一个结构体。
 
-`__main_block_impl_0`构造函数中传入了四个参数。`(void *)__main_block_func_0`、`&__main_block_desc_0_DATA`、`age`、`flags`。其中flage有默认值，也就说flage参数在调用的时候可以省略不传。age(_age)则表示传入的_age参数会自动赋值给age成员，相当于age = _age。**age代表局部变量**。
+`__main_block_impl_0`构造函数中传入了四个参数。`(void *)__main_block_func_0`、`&__main_block_desc_0_DATA`、`age`、`flags`。其中flage有默认值，也就说flage参数在调用的时候可以省略不传。`age(_age)`则表示传入的_age参数会自动赋值给age成员，相当于age = _age。**age代表局部变量**。
 
 `__main_block_func_0`函数中其实存储着我们block中写下的代码。而`__main_block_impl_0`函数中传入的是`(void *)__main_block_func_0`，也就说将我们写在block块中的代码封装成`__main_block_func_0`函数，并将`__main_block_func_0`函数的地址传入了`__main_block_impl_0`的构造函数中保存在结构体内。
 
@@ -59,7 +59,7 @@ FunPtr中存储着通过代码块封装的函数地址，那么调用此函数�
 
 
 
-一个bolck是即使是一个oc对象，在存储的时候是以结构体方式存储。结构体包含impl, desc,和捕获的变量。其中impl包含isa指针，flag，reserved = 0,和FuncPtr。FuncPtr是执行的函数块。 desc主要是描述block信息的，包含大小，data,最终将最终将`__main_block_desc_0`结构体的地址传入`__main_block_func_0`中赋值给Desc。
+**一个bolck是即使是一个oc对象，在存储的时候是以结构体方式存储。结构体包含impl, desc,和捕获的变量。其中impl包含isa指针，flag，reserved = 0,和FuncPtr。FuncPtr是执行的函数块。 desc主要是描述block信息的，包含大小，data,最终将最终将`__main_block_desc_0`结构体的地址传入`__main_block_func_0`中赋值给Desc。**
 
 
 
@@ -69,6 +69,10 @@ FunPtr中存储着通过代码块封装的函数地址，那么调用此函数�
 
 auto自动变量，离开作用域就销毁，局部变量前面自动添加auto关键字。自动变量会捕获到block内部，也就是说block内部会专门新增加一个参数来存储变量的值。
 auto只存在于局部变量中，访问方式为**值传递**，通过上述对age参数的解释我们也可以确定确实是值传递。
+
+**值传递** 捕获的是指针指向的内存地址，不是指针的内存地址！
+
+__block就是告诉他，指向指针的内存地址，不是指针指向的值的内存地址。
 
 
 
@@ -88,7 +92,7 @@ static 修饰的变量为指针传递，同样会被block捕获。
 
 **局部变量都会被block捕获，自动变量是值捕获，静态变量为地址捕获。全局变量则不会被block捕获**
 
-**self为局部变量，会被捕获的。**不论对象方法还是类方法都会默认将self作为参数传递给方法内部，既然是作为参数传入，那么self肯定是局部变量。上面讲到局部变量肯定会被block捕获。
+ **self为局部变量，会被捕获的。**不论对象方法还是类方法都会默认将self作为参数传递给方法内部，既然是作为参数传入，那么self肯定是局部变量。上面讲到局部变量肯定会被block捕获。
 
 即使block中使用的是实例对象的属性，block中捕获的仍然是实例对象，并通过实例对象通过不同的方式去获取使用到的属性。
 
@@ -102,7 +106,7 @@ block的类型：block的isa指针是指向_NSConcreteStackBlock类对象地址�
 
 ![img](https://upload-images.jianshu.io/upload_images/1434508-180cead6473c3ca8.png?imageMogr2/auto-orient/strip|imageView2/2/w/744)
 
-block呦三种类型  `__NSGlobalBlock__` - 数据段，以初始化的全局变量，静态变量，直到程序结束才会被回收,`__NSStackBlock__` 栈内存，自动分配，作用域执行完毕就会被系统回收,`__NSMallocBlock__`,堆内存，alloc出来的对象，动态分配内存，需要自己进行内存管理.
+block有三种类型  `__NSGlobalBlock__` - 数据段，以初始化的全局变量，静态变量，直到程序结束才会被回收,`__NSStackBlock__` 栈内存，自动分配，作用域执行完毕就会被系统回收,`__NSMallocBlock__`,堆内存，alloc出来的对象，动态分配内存，需要自己进行内存管理.
 
 
 
@@ -152,9 +156,15 @@ person作为一个oc对象被创建，变量作为auto对象被传入，传入�
 
 ## block的属性修饰词为什么是copy？使用block有哪些使用注意？
 
+block有三种类型  `__NSGlobalBlock__` - 数据段，以初始化的全局变量，静态变量，直到程序结束才会被回收,`__NSStackBlock__` 栈内存，自动分配，作用域执行完毕就会被系统回收,`__NSMallocBlock__`,堆内存，alloc出来的对象，动态分配内存，需要自己进行内存管理.
 
 
 
+栈中的内存由系统自动分配和释放，作用域执行完毕之后就会被立即释放，而在相同的作用域中定义block并且调用block似乎也多此一举。
+
+
+
+ARC处理：自动将栈上的block进行一次copy操作，将block复制到堆上。 会这样做的情况：1. block作为返回值返回时。2. block赋值给_strong指针时。3. block作为Cocoa API中方法名含有usingBlock的方法参数时。遍历数组的block方法，将block作为参数的时候。4. block作为GCD API的方法参数时。GDC的一次性函数或延迟执行的函数，执行完block操作之后系统才会对block进行release操作
 
 ## block在修改NSMutableArray，需不需要添加__block？
 

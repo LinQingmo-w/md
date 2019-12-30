@@ -1,5 +1,69 @@
 ### KVC
 
+Key Value Coding
+
+通过字符串的名字（key）来访问类属性的机制。而不是通过调用Setter、Getter方法访问。
+
+通过isa指针定位
+
+用来动态取值和设值
+
+用kvc来访问和修改私有变量
+
+model字典的转换
+
+修改控件内部属性
+
+####  设值
+
+1.首先搜索是否有`setKey:`的方法（key是成员变量名，首字母大写）,没有则会搜索是否有`setIsKey:`的方法。
+
+2.如果没有找到`setKey:`的方法,此时看`+ (BOOL)accessInstanceVariablesDirectly; `（是否直接访问成员变量）方法。
+
+若返回NO，则直接调用`- (nullable id)valueForUndefinedKey:;`(默认是抛出异常)。
+
+若返回YES，按 `_key`、`_iskey`、`key`、`isKey`的顺序搜索成员名。
+
+3.在第二步还没搜到的话就会调用`- (nullable id)valueForUndefinedKey:`方法。
+
+
+
+#### 取值
+
+1.按先后顺序搜索`getKey:`、`key`、`isKey`三个方法，若某一个方法被实现，取到的即是方法返回的值，后面的方法不再运行。如果是BOOL或者Int等值类型， 会将其包装成一个NSNumber对象。
+
+2.若这三个方法都没有找到，则会调用`+ (BOOL)accessInstanceVariablesDirectly`方法判断是否允许取成员变量的值。
+
+若返回NO，直接调用`- (nullable id)valueForUndefinedKey:(NSString *)key`方法，默认是奔溃。
+
+若返回YES,会按先后顺序取`_key`、`_isKey`、 `key`、`isKey`的值。
+
+3.返回YES时，`_key`、`_isKey`、 `key`、`isKey`的值都没取到，调用`- (nullable id)valueForUndefinedKey:(NSString *)key`方法。
+
+
+
+#### 异常
+
+1. 获取值时找不到key
+
+\- (nullable id)valueForUndefinedKey:(NSString *)key;
+
+2. 设值时找不到key
+
+\- (void)setValue:(nullable id)value forUndefinedKey:(NSString *)key；
+
+3. 给不能设置nil的属性设置了nil。
+
+
+
+#### 非对象和自定义对象
+
+KVC中返回的是一个id类型的对象，所以调用valueForKey:时如果是基本数据类型或者结构体，KVC会自动转成NSNumber类型或者NSValue类型，但是调用SetValue: forKey:时需要手动把基本数据类型或者结构体转成对象。
+
+
+
+
+
 ### KVO
 
 [链接](https://www.jianshu.com/p/5477cf91bb32)
