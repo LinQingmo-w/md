@@ -27,6 +27,12 @@ message_send 找不到对象，分为两种情况：
 
 2. 消息转发机制：
 
+	调用方法时，先消息传递，没搜到再转发，没有转发就用崩溃。
+	消息传递：分类(先缓存表后方法表)->当前类->父类->NSObject
+	消息转发：动态方法解析->备用接收者->完整消息转发
+
+	![img](https://upload-images.jianshu.io/upload_images/5417491-8a03f597e0e28ea4.png?imageMogr2/auto-orient/strip|imageView2/2/w/1039)
+
 OC中任何方法的调用，本质都是发送消息.
 
 **@selector (SEL)：是一个SEL方法选择器。**SEL其主要作用是快速的通过方法名字查找到对应方法的函数指针，然后调用其函数。SEL其本身是一个Int类型的地址，地址中存放着方法的名字。
@@ -131,6 +137,60 @@ class_addMethod中的四个参数。第一，二个参数比较好理解，重�
 
 
 
+#### **forwardInvocation -备援接受者**
+
+加入对象A无法处理消息fun，而对象B可以处理，此时A已经继承于类C，所以此时A不能再继承B。我们可以用消息转发的方式，来将消息转发给能够处理fun消息的对象B。
+
+ **forwardInvocation**：方法，此方法继承与NSObject。不过NSObject中此方法的实现，只是简单的调用了doesNotRecognizeSelector:
+
+我们要做的是重写需要转发消息的类A的forwardInvocation方法，以实现将消息转发给能处理fun消息的对象。
+
+```objective-c
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
+ 	if ([B respondsToSelector:[anInvocation selector])
+ 		[anInvocation B]; 
+ 	else 
+ 	[super forwardInvocation:anInvocation];
+ } 
+```
+
+
+
+还有关键一步，是重写methodSignatureForSelector方法，此方法是在向对象发送不能处理的消息的时候调用的，此方法可判断消息fun是否有效注册。如果注册过fun，那么则返回fun消息的地址之类的信息，如果无效则返回nil，那么就crash掉。所以我们要把fun消息注册为一个有效的。
+
+
+
+```objective-c
+ - (NSMethodSignature*)methodSignatureForSelector:(SEL)selector {
+     NSMethodSignature* signature = [super methodSignatureForSelector:selector];
+     
+     if (!signature)//如果父类中无注册fun消息，那么将B注册
+         signature = [B methodSignatureForSelector:selector];
+     
+     return signature;
+ }
+```
+
+
+
+这样一来，消息fun将被转发至B。
+
+我们来说一下向一个对象发送消息后，系统的处理流程
+
+1.首先发送消息[A fun];
+
+2.系统会检查A能否响应这个fun消息，如果能响应则A响应
+
+3.如果不能响应，则调用methodSignatureForSelector:来询问这个消息是否有效，包括去父类中询问。
+
+4.接着调用forwardInvocation:此时步骤三返回nil或者可以处理消息的消息地址。如果nil则crash，如果有可以处理fun消息的地址，那么转发成功。
+
+
+
+间接转发
+
+
+
 #### 动态添加属性
 
 给属性赋值其实就是属性指向一块
@@ -177,3 +237,31 @@ RunTime：RunTime字典转模型实现原理是遍历模型中的所有属性名
 
 
 ![img](https://tva1.sinaimg.cn/large/006tNbRwly1gab2oqjlfrj30cm0d70uh.jpg)
+
+
+
+>  **对isa、superclass总结**
+>
+> 1. instance的isa指向class
+> 2. class的isa指向meta-class
+> 3. meta-class的isa指向基类的meta-class，基类的isa指向自己
+> 4. class的superclass指向父类的class，如果没有父类，superclass指针为nil
+> 5. meta-class的superclass指向父类的meta-class，基类的meta-class的superclass指向基类的class
+> 6. instance调用对象方法的轨迹，isa找到class，方法不存在，就通过superclass找父类
+> 7. class调用类方法的轨迹，isa找meta-class，方法不存在，就通过superclass找父类
+
+
+
+#### weak表
+
+`Runtime`维护了一个`Weak`表，用于存储指向某个对象的所有`Weak`指针。`Weak`表其实是一个哈希表，**Key是所指对象的地址，Value是Weak指针的地址（这个地址的值是所指对象的地址）的数组。**
+在对象被回收的时候，经过层层调用，会最终触发下面的方法将所有`Weak`指针的值设为nil。
+
+`weak` 的实现原理可以概括一下三步：
+
+1、初始化时：`runtime`会调用`objc_initWeak`函数，初始化一个新的`weak`指针指向对象的地址。
+
+2、添加引用时：`objc_initWeak`函数会调用 `objc_storeWeak() `函数， `objc_storeWeak() `的作用是更新指针指向，创建对应的弱引用表。
+
+3、释放时，调用`clearDeallocating`函数。`clearDeallocating`函数首先根据对象地址获取所有`weak`指针地址的数组，然后遍历这个数组把其中的数据设为nil，最后把这个`entry`从`weak`表中删除，最后清理对象的记录
+

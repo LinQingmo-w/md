@@ -191,3 +191,16 @@ ARC处理：自动将栈上的block进行一次copy操作，将block复制到堆
 copy函数会将person地址传入`_Block_object_assign`函数，`_Block_object_assign`中对Person对象进行强引用或者弱引用。
 
 如何`block`内部中对`__block`修饰变量生成的结构体都是强引用，结构体内部对外部变量的引用取决于传入block内部的变量是强引用还是弱引用。
+
+
+
+
+
+
+
+首先需要明白一些关于 Block 的概念：
+1、默认情况下，block 是放在栈里面的
+2、一旦blcok进行了copy操作，block的内存就会被放在堆里面
+3、堆立面的block（被copy过的block）有以下现象
+1> block内部如果通过外面声明的强引用来使用，那么block内部会自动产生一个强引用指向所使用的对象。
+2> block内部如果通过外面声明的弱引用来使用，那么block内部会自动产生一个弱引用指向所使用的对象。
